@@ -231,20 +231,32 @@ export function getRandomValidAction(validActions) {
   return actions[getRandomInteger(0, actions.length)];
 }
 
-export const normalizePlayer = (playerIndex) => playerIndex % 4;
+export const normalizePlayer = (player) => player % 4;
+export const getTeam = (player) => player % 2;
+
+export const WINNING_SCORE = 10;
 
 export class EuchreGame {
   _deck;
   isPlayingStickTheDealer = false;
 
-  // Player 0 - Player 2
-  team02Score;
-  // Player 1 - Player 3
-  team13Score;
+  scores;
+  sets;
+  hands;
+  currentDealer;
+  currentHand;
 
   constructor(args) {
     this._deck = args.deck || Deck.STANDARD_EUCHRE_DECK;
     this.isPlayingStickTheDealer = !!args?.isPlayingStickTheDealer;
+
+    // TODO: hard-coding to two teams.
+    this.scores = [0, 0];
+    this.sets = [0, 0];
+    this.hands = [];
+
+    this.currentDealer = getRandomInteger(0, 4);
+    this.startNewHand();
   }
 
   shuffleDeck() {
@@ -253,6 +265,20 @@ export class EuchreGame {
 
   get deck() {
     return this._deck;
+  }
+
+  get isDone() {
+    for (let team = 0; team < this.scores.length; team++) {
+      if (WINNING_SCORE <= this.scores[team]) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  startNewHand() {
+    this.currentHand = new EuchreHand(this, this.currentDealer);
+    this.currentDealer = normalizePlayer(this.currentDealer + 1);
   }
 
   /**
@@ -274,7 +300,24 @@ export class EuchreGame {
    *     A game ends when the head of the snake goes off the board or goes
    *     over its own body.
    */
-  step(action) {}
+  step(action) {
+    this.currentHand.step(action);
+
+    if (this.currentHand.isDone) {
+      this.hands.push(this.currentHand);
+
+      // Update scores and sets
+      for (let team = 0; team < this.scores.length; team++) {
+        this.scores[team] = this.scores[team] + this.currentHand.getScore(team);
+        this.sets[team] =
+          this.sets[team] + (this.currentHand.isTeamSet(team) ? 1 : 0);
+      }
+
+      if (!this.isDone) {
+        this.startNewHand();
+      }
+    }
+  }
 }
 
 export const Rounds = Object.freeze({
@@ -306,14 +349,7 @@ export class EuchreHand {
 
   tricks;
   currentTrick;
-  /**
-   * Current number of tricks for Team with Player 0 and Player 2
-   */
-  team02Tricks;
-  /**
-   * Current number of tricks for Team with Player 1 and Player 3
-   */
-  team13Tricks;
+  teamTricks = [0, 0];
 
   publiclyKnownCards;
 
@@ -495,7 +531,7 @@ export class EuchreHand {
 
     // Is playing a trick.
     let nextPlayer;
-    if (this.cards.length === 0) {
+    if (this.currentTrick.cards.length === 0) {
       nextPlayer =
         this.tricks.length === 0
           ? normalizePlayer(this.dealer + 1)
@@ -542,16 +578,22 @@ export class EuchreHand {
     // Analyze the trick.
     this.currentTrick.analyze();
 
-    if (this.currentTrick.winningPlayer % 2 === 0) {
-      this.team02Tricks++;
-    } else {
-      this.team13Tricks++;
-    }
+    const teamWinningTrick = getTeam(this.currentTrick.winningPlayer);
+    this.teamTricks[teamWinningTrick] = this.teamTricks[teamWinningTrick] + 1;
 
     this.tricks.push(this.currentTrick);
 
-    // Start the next round.
-    this.startRound();
+    // Start the next round
+    if (this.tricks.length < 4) {
+      this.startRound();
+    } else {
+      // TODO: is this ok???
+      // There's only trick 5 left + everyone only has one card to play.
+      for (let i = 0; i < this.numberOfPlayersPlaying; i++) {
+        this.currentPlayer = nextPlayer;
+        this.step([...this.getValidActions(this.currentPlayer)][0]);
+      }
+    }
   }
 
   get numberOfPlayersPlaying() {
@@ -589,15 +631,40 @@ export class EuchreHand {
         this.removeCardFromHand(card, this.currentPlayer);
 
         // Add cards cards for trick.
-        this.cards.push(card);
+        this.currentTrick.playCard(card, this.currentPlayer);
 
-        if (this.cards.length === this.numberOfPlayersPlaying) {
+        if (this.currentTrick.cards.length === this.numberOfPlayersPlaying) {
           this.endRound();
         }
       }
     }
 
     this.currentPlayer = this.nextPlayer;
+  }
+
+  get isDone() {
+    return this.tricks.length === 5;
+  }
+
+  get teamOrderedTrump() {
+    return getTeam(this.playerOrderingTrump);
+  }
+
+  getScore(team) {
+    if (team === this.teamOrderedTrump) {
+      if (this.teamTricks[team] == 5) {
+        return this.isPlayerOrderingTrumpGoingAlone ? 4 : 2;
+      }
+      if (2 < this.teamTricks[team]) {
+        return 1;
+      }
+      return 0;
+    }
+    return 2 < this.teamTricks[team] ? 2 : 0;
+  }
+
+  isTeamSet(team) {
+    return team === this.teamOrderedTrump && this.teamTricks[team] < 3;
   }
 }
 
@@ -615,7 +682,7 @@ export class Trick {
     this.playerByCardHashCode = {};
   }
 
-  playCard(player, card) {
+  playCard(card, player) {
     this.cards.push(card);
     this.playerByCardHashCode[`${card.hashCode()}`] = player;
   }
