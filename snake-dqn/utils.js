@@ -15,7 +15,7 @@
  * =============================================================================
  */
 
-import * as tf from '@tensorflow/tfjs';
+import * as tf from "@tensorflow/tfjs";
 
 /**
  * Generate a random integer >= min and < max.
@@ -46,14 +46,21 @@ export function getRandomIntegers(min, max, numIntegers) {
   return output;
 }
 
-
 export function assertPositiveInteger(x, name) {
   if (!Number.isInteger(x)) {
-    throw new Error(
-        `Expected ${name} to be an integer, but received ${x}`);
+    throw new Error(`Expected ${name} to be an integer, but received ${x}`);
   }
   if (!(x > 0)) {
     throw new Error(
-        `Expected ${name} to be a positive number, but received ${x}`);
+      `Expected ${name} to be a positive number, but received ${x}`
+    );
+  }
+}
+
+export function assertIsValidAction(action, validActions) {
+  if (!validActions.has(action)) {
+    throw new Error(
+      `Action ${action} isn't a valid action: ${[...validActions].join(", ")}`
+    );
   }
 }

@@ -17,182 +17,238 @@
 
 import * as tf from "@tensorflow/tfjs";
 
-import { assertPositiveInteger, getRandomInteger } from "./utils";
+import {
+  assertPositiveInteger,
+  assertIsValidAction,
+  getRandomInteger,
+} from "./utils";
+import * as Deck from "./euchre_decks";
 import { _ } from "core-js";
+import { assert } from "console";
 
-const DEFAULT_HEIGHT = 16;
-const DEFAULT_WIDTH = 16;
-const DEFAULT_NUM_FRUITS = 1;
-const DEFAULT_INIT_LEN = 4;
-
-// TODO(cais): Tune these parameters.
-export const NO_FRUIT_REWARD = -0.2;
-export const FRUIT_REWARD = 10;
-export const DEATH_REWARD = -10;
-// TODO(cais): Explore adding a "bad fruit" with a negative reward.
-
-// Snake actions
-export const ACTION_GO_STRAIGHT = 0;
-export const ACTION_TURN_LEFT = 1;
-export const ACTION_TURN_RIGHT = 2;
-
-// Euchre actions
+// --------- Euchre actions ---------
+// TODO: Define shifts in base 2 rather than base 10?
+const GOING_ALONE_SHIFT = 10;
 
 // Bidding actions
-export const ACTION_PASS = 0;
-export const ACTION_ORDER_TRUMP = 1;
-export const ACTION_ORDER_TRUMP_ALONE = 2;
+const BIDDING_ACTION_SHIFT = 0;
+
+export const ACTION_PASS = BIDDING_ACTION_SHIFT + 0;
+export const ACTION_ORDER_TRUMP = BIDDING_ACTION_SHIFT + 1;
+export const ACTION_ORDER_TRUMP_ALONE = ACTION_ORDER_TRUMP + GOING_ALONE_SHIFT;
+
+export const BIDDING_ACTIONS = [
+  ACTION_PASS,
+  ACTION_ORDER_TRUMP,
+  ACTION_ORDER_TRUMP_ALONE,
+];
 
 // Bidding on suit actions
-const getOrderSuitAction = (suit) => 10 + suit;
+const BIDDING_ON_SUIT_ACTION_SHIFT = 100;
+const getOrderSuitAction = (suit) => BIDDING_ON_SUIT_ACTION_SHIFT + suit;
+const getOrderSuitAloneAction = (suit) =>
+  BIDDING_ON_SUIT_ACTION_SHIFT + GOING_ALONE_SHIFT + suit;
+const getSuitFromOrderSuitAction = (action) => action % 10;
 
-export const ACTION_ORDER_CLUBS = 10;
-export const ACTION_ORDER_DIAMONDS = 11;
-export const ACTION_ORDER_HEARTS = 12;
-export const ACTION_ORDER_SPADES = 13;
+const getSuitFromAction = (action) => action % 10;
+const isGoingAloneAction = (action) => Math.trunc(action / 10) % 10 === 1;
+
+export const BIDDING_ON_SUIT_ACTIONS = Deck.Suits.map((suit) =>
+  getOrderSuitAction(suit)
+);
+export const BIDDING_ON_SUIT_ALONE_ACTIONS = Deck.Suits.map((suit) =>
+  getOrderSuitAloneAction(suit)
+);
+/*
+export const ACTION_ORDER_CLUBS =
+  BIDDING_ON_SUIT_ACTION_SHIFT + Deck.Suits.CLUBS;
+export const ACTION_ORDER_DIAMONDS =
+  BIDDING_ON_SUIT_ACTION_SHIFT + Deck.Suits.DIAMONDS;
+export const ACTION_ORDER_HEARTS =
+  BIDDING_ON_SUIT_ACTION_SHIFT + Deck.Suits.HEARTS;
+export const ACTION_ORDER_SPADES =
+  BIDDING_ON_SUIT_ACTION_SHIFT + Deck.Suits.SPADES;
+
+export const ACTION_ORDER_CLUBS_ALONE = ACTION_ORDER_CLUBS + GOING_ALONE_SHIFT;
+export const ACTION_ORDER_DIAMONDS_ALONE =
+  ACTION_ORDER_DIAMONDS + GOING_ALONE_SHIFT;
+export const ACTION_ORDER_HEARTS_ALONE =
+  ACTION_ORDER_HEARTS + GOING_ALONE_SHIFT;
+export const ACTION_ORDER_SPADES_ALONE =
+  ACTION_ORDER_SPADES + GOING_ALONE_SHIFT;
+*/
 
 // Discard actions
-const getDiscardAction = (card) => 100 + card.hashCode();
+const DISCARD_ACTION_SHIFT = 200;
 
-export const ACTION_DISCARD_A_CLUBS = 100;
-export const ACTION_DISCARD_K_CLUBS = 101;
-export const ACTION_DISCARD_Q_CLUBS = 102;
-export const ACTION_DISCARD_J_CLUBS = 103;
-export const ACTION_DISCARD_T_CLUBS = 104;
-export const ACTION_DISCARD_N_CLUBS = 105;
-export const ACTION_DISCARD_A_DIAMONDS = 110;
-export const ACTION_DISCARD_K_DIAMONDS = 111;
-export const ACTION_DISCARD_Q_DIAMONDS = 112;
-export const ACTION_DISCARD_J_DIAMONDS = 113;
-export const ACTION_DISCARD_T_DIAMONDS = 114;
-export const ACTION_DISCARD_N_DIAMONDS = 115;
-export const ACTION_DISCARD_A_HEARTS = 120;
-export const ACTION_DISCARD_K_HEARTS = 121;
-export const ACTION_DISCARD_Q_HEARTS = 122;
-export const ACTION_DISCARD_J_HEARTS = 123;
-export const ACTION_DISCARD_T_HEARTS = 124;
-export const ACTION_DISCARD_N_HEARTS = 125;
-export const ACTION_DISCARD_A_SPADES = 130;
-export const ACTION_DISCARD_K_SPADES = 131;
-export const ACTION_DISCARD_Q_SPADES = 132;
-export const ACTION_DISCARD_J_SPADES = 133;
-export const ACTION_DISCARD_T_SPADES = 134;
-export const ACTION_DISCARD_N_SPADES = 135;
+const getDiscardAction = (card) => DISCARD_ACTION_SHIFT + card.hashCode();
+
+export const DISCARD_ACTIONS = Deck.STANDARD_EUCHRE_DECK.map((card) =>
+  getDiscardAction(card)
+);
+/*
+export const ACTION_DISCARD_A_C = getDiscardAction(Deck.CARD_A_C);
+export const ACTION_DISCARD_K_C = getDiscardAction(Deck.CARD_K_C);
+export const ACTION_DISCARD_Q_C = getDiscardAction(Deck.CARD_Q_C);
+export const ACTION_DISCARD_J_C = getDiscardAction(Deck.CARD_J_C);
+export const ACTION_DISCARD_T_C = getDiscardAction(Deck.CARD_T_C);
+export const ACTION_DISCARD_N_C = getDiscardAction(Deck.CARD_N_C);
+export const ACTION_DISCARD_A_D = getDiscardAction(Deck.CARD_A_D);
+export const ACTION_DISCARD_K_D = getDiscardAction(Deck.CARD_K_D);
+export const ACTION_DISCARD_Q_D = getDiscardAction(Deck.CARD_Q_D);
+export const ACTION_DISCARD_J_D = getDiscardAction(Deck.CARD_J_D);
+export const ACTION_DISCARD_T_D = getDiscardAction(Deck.CARD_T_D);
+export const ACTION_DISCARD_N_D = getDiscardAction(Deck.CARD_N_D);
+export const ACTION_DISCARD_A_H = getDiscardAction(Deck.CARD_A_H);
+export const ACTION_DISCARD_K_H = getDiscardAction(Deck.CARD_K_H);
+export const ACTION_DISCARD_Q_H = getDiscardAction(Deck.CARD_Q_H);
+export const ACTION_DISCARD_J_H = getDiscardAction(Deck.CARD_J_H);
+export const ACTION_DISCARD_T_H = getDiscardAction(Deck.CARD_T_H);
+export const ACTION_DISCARD_N_H = getDiscardAction(Deck.CARD_N_H);
+export const ACTION_DISCARD_A_S = getDiscardAction(Deck.CARD_A_S);
+export const ACTION_DISCARD_K_S = getDiscardAction(Deck.CARD_K_S);
+export const ACTION_DISCARD_Q_S = getDiscardAction(Deck.CARD_Q_S);
+export const ACTION_DISCARD_J_S = getDiscardAction(Deck.CARD_J_S);
+export const ACTION_DISCARD_T_S = getDiscardAction(Deck.CARD_T_S);
+export const ACTION_DISCARD_N_S = getDiscardAction(Deck.CARD_N_S);
+*/
 
 // Playing actions
-const getPlayingAction = (card) => 200 + card.hashCode();
+const PLAYING_ACTION_SHIFT = 300;
 
-export const ACTION_PLAY_A_CLUBS = 200;
-export const ACTION_PLAY_K_CLUBS = 201;
-export const ACTION_PLAY_Q_CLUBS = 202;
-export const ACTION_PLAY_J_CLUBS = 203;
-export const ACTION_PLAY_T_CLUBS = 204;
-export const ACTION_PLAY_N_CLUBS = 205;
-export const ACTION_PLAY_A_DIAMONDS = 210;
-export const ACTION_PLAY_K_DIAMONDS = 211;
-export const ACTION_PLAY_Q_DIAMONDS = 212;
-export const ACTION_PLAY_J_DIAMONDS = 213;
-export const ACTION_PLAY_T_DIAMONDS = 214;
-export const ACTION_PLAY_N_DIAMONDS = 215;
-export const ACTION_PLAY_A_HEARTS = 220;
-export const ACTION_PLAY_K_HEARTS = 221;
-export const ACTION_PLAY_Q_HEARTS = 222;
-export const ACTION_PLAY_J_HEARTS = 223;
-export const ACTION_PLAY_T_HEARTS = 224;
-export const ACTION_PLAY_N_HEARTS = 225;
-export const ACTION_PLAY_A_SPADES = 230;
-export const ACTION_PLAY_K_SPADES = 231;
-export const ACTION_PLAY_Q_SPADES = 232;
-export const ACTION_PLAY_J_SPADES = 233;
-export const ACTION_PLAY_T_SPADES = 234;
-export const ACTION_PLAY_N_SPADES = 235;
+const getPlayingAction = (card) => PLAYING_ACTION_SHIFT + card.hashCode();
 
+export const PLAYING_ACTIONS = Deck.STANDARD_EUCHRE_DECK.map((card) =>
+  getPlayingAction(card)
+);
+/*
+export const ACTION_PLAY_A_C = getPlayingAction(Deck.CARD_A_C);
+export const ACTION_PLAY_K_C = getPlayingAction(Deck.CARD_K_C);
+export const ACTION_PLAY_Q_C = getPlayingAction(Deck.CARD_Q_C);
+export const ACTION_PLAY_J_C = getPlayingAction(Deck.CARD_J_C);
+export const ACTION_PLAY_T_C = getPlayingAction(Deck.CARD_T_C);
+export const ACTION_PLAY_N_C = getPlayingAction(Deck.CARD_N_C);
+export const ACTION_PLAY_A_D = getPlayingAction(Deck.CARD_A_D);
+export const ACTION_PLAY_K_D = getPlayingAction(Deck.CARD_K_D);
+export const ACTION_PLAY_Q_D = getPlayingAction(Deck.CARD_Q_D);
+export const ACTION_PLAY_J_D = getPlayingAction(Deck.CARD_J_D);
+export const ACTION_PLAY_T_D = getPlayingAction(Deck.CARD_T_D);
+export const ACTION_PLAY_N_D = getPlayingAction(Deck.CARD_N_D);
+export const ACTION_PLAY_A_H = getPlayingAction(Deck.CARD_A_H);
+export const ACTION_PLAY_K_H = getPlayingAction(Deck.CARD_K_H);
+export const ACTION_PLAY_Q_H = getPlayingAction(Deck.CARD_Q_H);
+export const ACTION_PLAY_J_H = getPlayingAction(Deck.CARD_J_H);
+export const ACTION_PLAY_T_H = getPlayingAction(Deck.CARD_T_H);
+export const ACTION_PLAY_N_H = getPlayingAction(Deck.CARD_N_H);
+export const ACTION_PLAY_A_S = getPlayingAction(Deck.CARD_A_S);
+export const ACTION_PLAY_K_S = getPlayingAction(Deck.CARD_K_S);
+export const ACTION_PLAY_Q_S = getPlayingAction(Deck.CARD_Q_S);
+export const ACTION_PLAY_J_S = getPlayingAction(Deck.CARD_J_S);
+export const ACTION_PLAY_T_S = getPlayingAction(Deck.CARD_T_S);
+export const ACTION_PLAY_N_S = getPlayingAction(Deck.CARD_N_S);
+*/
+
+export const getCardFromAction = (action) => Deck.getCard(action % 100);
+
+/*
 export const ALL_ACTIONS = [
+  // Bidding
   ACTION_ORDER_TRUMP,
   ACTION_ORDER_TRUMP_ALONE,
   ACTION_PASS,
+  // Biding on suit
   ACTION_ORDER_CLUBS,
   ACTION_ORDER_DIAMONDS,
   ACTION_ORDER_HEARTS,
   ACTION_ORDER_SPADES,
-  ACTION_DISCARD_A_CLUBS,
-  ACTION_DISCARD_K_CLUBS,
-  ACTION_DISCARD_Q_CLUBS,
-  ACTION_DISCARD_J_CLUBS,
-  ACTION_DISCARD_T_CLUBS,
-  ACTION_DISCARD_N_CLUBS,
-  ACTION_DISCARD_A_DIAMONDS,
-  ACTION_DISCARD_K_DIAMONDS,
-  ACTION_DISCARD_Q_DIAMONDS,
-  ACTION_DISCARD_J_DIAMONDS,
-  ACTION_DISCARD_T_DIAMONDS,
-  ACTION_DISCARD_N_DIAMONDS,
-  ACTION_DISCARD_A_HEARTS,
-  ACTION_DISCARD_K_HEARTS,
-  ACTION_DISCARD_Q_HEARTS,
-  ACTION_DISCARD_J_HEARTS,
-  ACTION_DISCARD_T_HEARTS,
-  ACTION_DISCARD_N_HEARTS,
-  ACTION_DISCARD_A_SPADES,
-  ACTION_DISCARD_K_SPADES,
-  ACTION_DISCARD_Q_SPADES,
-  ACTION_DISCARD_J_SPADES,
-  ACTION_DISCARD_T_SPADES,
-  ACTION_DISCARD_N_SPADES,
-  ACTION_PLAY_A_CLUBS,
-  ACTION_PLAY_K_CLUBS,
-  ACTION_PLAY_Q_CLUBS,
-  ACTION_PLAY_J_CLUBS,
-  ACTION_PLAY_T_CLUBS,
-  ACTION_PLAY_N_CLUBS,
-  ACTION_PLAY_A_DIAMONDS,
-  ACTION_PLAY_K_DIAMONDS,
-  ACTION_PLAY_Q_DIAMONDS,
-  ACTION_PLAY_J_DIAMONDS,
-  ACTION_PLAY_T_DIAMONDS,
-  ACTION_PLAY_N_DIAMONDS,
-  ACTION_PLAY_A_HEARTS,
-  ACTION_PLAY_K_HEARTS,
-  ACTION_PLAY_Q_HEARTS,
-  ACTION_PLAY_J_HEARTS,
-  ACTION_PLAY_T_HEARTS,
-  ACTION_PLAY_N_HEARTS,
-  ACTION_PLAY_A_SPADES,
-  ACTION_PLAY_K_SPADES,
-  ACTION_PLAY_Q_SPADES,
-  ACTION_PLAY_J_SPADES,
-  ACTION_PLAY_T_SPADES,
-  ACTION_PLAY_N_SPADES,
+  // Discarding
+  ACTION_DISCARD_A_C,
+  ACTION_DISCARD_K_C,
+  ACTION_DISCARD_Q_C,
+  ACTION_DISCARD_J_C,
+  ACTION_DISCARD_T_C,
+  ACTION_DISCARD_N_C,
+  ACTION_DISCARD_A_D,
+  ACTION_DISCARD_K_D,
+  ACTION_DISCARD_Q_D,
+  ACTION_DISCARD_J_D,
+  ACTION_DISCARD_T_D,
+  ACTION_DISCARD_N_D,
+  ACTION_DISCARD_A_H,
+  ACTION_DISCARD_K_H,
+  ACTION_DISCARD_Q_H,
+  ACTION_DISCARD_J_H,
+  ACTION_DISCARD_T_H,
+  ACTION_DISCARD_N_H,
+  ACTION_DISCARD_A_S,
+  ACTION_DISCARD_K_S,
+  ACTION_DISCARD_Q_S,
+  ACTION_DISCARD_J_S,
+  ACTION_DISCARD_T_S,
+  ACTION_DISCARD_N_S,
+  // Playing
+  ACTION_PLAY_A_C,
+  ACTION_PLAY_K_C,
+  ACTION_PLAY_Q_C,
+  ACTION_PLAY_J_C,
+  ACTION_PLAY_T_C,
+  ACTION_PLAY_N_C,
+  ACTION_PLAY_A_D,
+  ACTION_PLAY_K_D,
+  ACTION_PLAY_Q_D,
+  ACTION_PLAY_J_D,
+  ACTION_PLAY_T_D,
+  ACTION_PLAY_N_D,
+  ACTION_PLAY_A_H,
+  ACTION_PLAY_K_H,
+  ACTION_PLAY_Q_H,
+  ACTION_PLAY_J_H,
+  ACTION_PLAY_T_H,
+  ACTION_PLAY_N_H,
+  ACTION_PLAY_A_S,
+  ACTION_PLAY_K_S,
+  ACTION_PLAY_Q_S,
+  ACTION_PLAY_J_S,
+  ACTION_PLAY_T_S,
+  ACTION_PLAY_N_S,
 ];
+*/
+export const ALL_ACTIONS = [
+  BIDDING_ACTIONS,
+  BIDDING_ON_SUIT_ACTIONS,
+  BIDDING_ON_SUIT_ALONE_ACTIONS,
+  DISCARD_ACTIONS,
+  PLAYING_ACTIONS,
+].flat(1);
 export const NUM_ACTIONS = ALL_ACTIONS.length;
 
 /**
- * Generate a random action among all possible actions.
- *
- * @return {0 | 1 | 2} Action represented as a number.
+ * @param {Set} validActions
+ * @returns Random action in validActions
  */
-export function getRandomAction() {
-  // TODO: action must be valid for the game state
-  return getRandomInteger(0, NUM_ACTIONS);
+export function getRandomValidAction(validActions) {
+  const actions = [...validActions];
+  return actions[getRandomInteger(0, actions.length)];
 }
+
+export const normalizePlayer = (playerIndex) => playerIndex % 4;
 
 export class EuchreGame {
   _deck;
   isPlayingStickTheDealer = false;
+
   // Player 0 - Player 2
   team02Score;
   // Player 1 - Player 3
   team13Score;
 
   constructor(args) {
-    this._deck = args.deck || newDeck();
+    this._deck = args.deck || Deck.STANDARD_EUCHRE_DECK;
     this.isPlayingStickTheDealer = !!args?.isPlayingStickTheDealer;
-
-    reset();
   }
 
   shuffleDeck() {
-    shuffleArray(this.deck);
+    Deck.shuffleArray(this.deck);
   }
 
   get deck() {
@@ -221,217 +277,56 @@ export class EuchreGame {
   step(action) {}
 }
 
-export const Suits = Object.freeze({
-  CLUBS: 0,
-  DIAMONDS: 1,
-  HEARTS: 2,
-  SPADES: 3,
+export const Rounds = Object.freeze({
+  BIDDING: 9,
+  TRICK_1: 0,
+  TRICK_2: 1,
+  TRICK_3: 2,
+  TRICK_4: 3,
+  TRICK_5: 4,
 });
-
-export const getOppositeSuit = (suit) => {
-  if (suit === Suits.CLUBS) {
-    return Suits.SPADES;
-  }
-  if (suit === Suits.DIAMONDS) {
-    return Suits.HEARTS;
-  }
-  if (suit === Suits.HEARTS) {
-    return Suits.DIAMONDS;
-  }
-  return Suits.CLUBS;
-};
-
-export const Ranks = Object.freeze({
-  // Ace
-  ACE: 0,
-  // King
-  KING: 1,
-  // Queen
-  QUEEN: 2,
-  // Jack
-  JACK: 3,
-  // Ten (10)
-  TEN: 4,
-  // Nine (9)
-  NINE: 5,
-});
-
-export class Card {
-  suit;
-  rank;
-
-  constructor(suit, rank) {
-    this.suit = suit;
-    this.rank = rank;
-  }
-
-  hashCode() {
-    return 10 * this.suit + 1 + this.rank;
-  }
-
-  equals(card) {
-    return this.hashCode() === card.hashCode();
-  }
-
-  isRightBower(trumpSuit) {
-    return this.rank === Ranks.JACK && this.suit === trumpSuit;
-  }
-
-  isLeftBower(trumpSuit) {
-    return this.rank === Ranks.JACK && getOppositeSuit(this.suit) === trumpSuit;
-  }
-
-  isTrump(trumpSuit) {
-    return this.suit === trumpSuit || this.isLeftBower(trumpSuit);
-  }
-}
-
-const getTrumpComparator = (trumpSuit) => {
-  // Note: cards can never be the same card
-  return (a, b) => {
-    if (a.isRightBower(trumpSuit)) {
-      return -1;
-    }
-    if (b.isRightBower(trumpSuit)) {
-      return 1;
-    }
-    if (a.isLeftBower(trumpSuit)) {
-      return -1;
-    }
-    if (b.isLeftBower(trumpSuit)) {
-      return 1;
-    }
-    if (a.isTrump(trumpSuit)) {
-      if (b.isTrump(trumpSuit)) {
-        // Order on rank
-        return a.rank < b.rank ? -1 : 1;
-      }
-      return -1;
-    }
-    if (b.isTrump(trumpSuit)) {
-      return 1;
-    }
-    return 0;
-  };
-};
-
-const getTrickComparator = (cardLed, trumpSuit) => {
-  return (a, b) => {
-    const trumpComparator = getTrumpComparator(trumpSuit)(a, b);
-    if (trumpComparator !== 0) {
-      return trumpComparator;
-    }
-    if (a.suit === cardLed.suit) {
-      if (b.suit === cardLed.suit) {
-        return a.rank < b.rank ? -1 : 1;
-      }
-      return -1;
-    }
-    if (b.suit === cardLed.suit) {
-      return 1;
-    }
-    return 0;
-  };
-};
-
-/**
- *
- * @param {*} cardLed
- * @param {*} trumpSuit
- * @returns Array filter for what cards in a hand must be played to follow suit
- */
-const getFilterToFollowSuit = (cardLed, trumpSuit) => {
-  if (cardLed.isTrump(trumpSuit)) {
-    return (card) => card.isTrump(trumpSuit);
-  }
-  return (card) => cardLed.suit === card.suit;
-};
-
-export const newDeck = () => {
-  return shuffleArray([
-    new Card(Suits.CLUBS, Ranks.ACE),
-    new Card(Suits.CLUBS, Ranks.KING),
-    new Card(Suits.CLUBS, Ranks.QUEEN),
-    new Card(Suits.CLUBS, Ranks.JACK),
-    new Card(Suits.CLUBS, Ranks.TEN),
-    new Card(Suits.CLUBS, Ranks.NINE),
-    new Card(Suits.DIAMONDS, Ranks.ACE),
-    new Card(Suits.DIAMONDS, Ranks.KING),
-    new Card(Suits.DIAMONDS, Ranks.QUEEN),
-    new Card(Suits.DIAMONDS, Ranks.JACK),
-    new Card(Suits.DIAMONDS, Ranks.TEN),
-    new Card(Suits.DIAMONDS, Ranks.NINE),
-    new Card(Suits.HEARTS, Ranks.ACE),
-    new Card(Suits.HEARTS, Ranks.KING),
-    new Card(Suits.HEARTS, Ranks.QUEEN),
-    new Card(Suits.HEARTS, Ranks.JACK),
-    new Card(Suits.HEARTS, Ranks.TEN),
-    new Card(Suits.HEARTS, Ranks.NINE),
-    new Card(Suits.SPADES, Ranks.ACE),
-    new Card(Suits.SPADES, Ranks.KING),
-    new Card(Suits.SPADES, Ranks.QUEEN),
-    new Card(Suits.SPADES, Ranks.JACK),
-    new Card(Suits.SPADES, Ranks.TEN),
-    new Card(Suits.SPADES, Ranks.NINE),
-  ]);
-};
-
-const shuffleArray = (array) => {
-  for (let i = array.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [array[i], array[j]] = [array[j], array[i]];
-  }
-  return array;
-};
-
-const normalizePlayer = (playerIndex) => playerIndex % 4;
 
 export class EuchreHand {
   euchreGame;
-  deck;
   hands;
-  kiddie;
-  shownCards;
 
   dealer; // 0, 1, 2, 3
+  dealerPartner;
+  playerOrderingTrump;
+  playerOrderingTrumpPartner;
+  currentPlayer;
+
   trumpCandidate;
   trumpSuit;
 
   isBiddingOnTrumpCandidate = false;
   isBiddingOnSuit = false;
-  isDealerDiscarding = false;
-  playerOrderingTrump;
   isPlayerOrderingTrumpGoingAlone = false;
+  isDealerDiscarding = false;
 
   tricks;
-  cardsPlayed;
-
+  currentTrick;
+  /**
+   * Current number of tricks for Team with Player 0 and Player 2
+   */
   team02Tricks;
+  /**
+   * Current number of tricks for Team with Player 1 and Player 3
+   */
   team13Tricks;
 
-  playerFirstToAct;
-
-  /**
-   * 0 = bidding
-   * 1 = playing trick 1
-   * 2 = playing trick 2
-   * 3 = playing trick 3
-   * 4 = playing trick 4
-   * NOT selecting an action for round trick 5 since there's no choice
-   */
-  roundNumber;
+  publiclyKnownCards;
 
   constructor(euchreGame, dealer) {
     this.euchreGame = euchreGame;
     // Must be 1, 2, 3, or 4
     this.dealer = dealer;
-    this.playerFirstToAct = normalizePlayer(dealer + 1);
-    this.roundNumber = 0;
+    this.dealerPartner = normalizePlayer(dealer + 2);
+    this.currentPlayer = normalizePlayer(dealer + 1);
     this.tricks = [];
-    this.cardsPlayed = [];
+    this.publiclyKnownCards = [];
 
     // Deal to players in 3-2 because...it's what we do.
-    this.euchreGame.shuffleDeck();
     this.hands = [
       // Player 0
       [],
@@ -443,6 +338,7 @@ export class EuchreHand {
       [],
     ];
 
+    this.euchreGame.shuffleDeck();
     let deck = this.euchreGame.deck;
 
     // Left of dealer
@@ -489,18 +385,33 @@ export class EuchreHand {
       deck[19],
     ];
 
+    // The first remaining card is the trump candidate/flipped card.
+    // Note this supports playing with modified decks, e.g. add a Joker.
     this.trumpCandidate = deck[20];
 
     // Track cards that were shown.
-    this.shownCards = [this.trumpCandidate];
+    this.publiclyKnownCards.push(this.trumpCandidate);
 
     this.isBiddingOnTrumpCandidate = true;
+  }
+
+  get isBidding() {
+    return this.isBiddingOnTrumpCandidate || this.isBiddingOnSuit;
   }
 
   get isPlayingHand() {
     return !this.isBidding();
   }
 
+  removeCardFromHand(cardToRemove, player) {
+    hands[player] = hands[player].filter((card) => card === cardToRemove);
+  }
+
+  /**
+   *
+   * @param {int} player
+   * @returns Set of valid action integers
+   */
   getValidActions(player) {
     if (this.isBiddingOnTrumpCandidate) {
       return new Set([
@@ -523,17 +434,21 @@ export class EuchreHand {
     if (this.isBiddingOnSuit) {
       if (this.trumpSuit !== Suits.CLUBS) {
         actions.add(ACTION_ORDER_CLUBS);
+        actions.add(ACTION_ORDER_CLUBS_ALONE);
       }
       if (this.trumpSuit !== Suits.DIAMONDS) {
         actions.add(ACTION_ORDER_DIAMONDS);
+        actions.add(ACTION_ORDER_DIAMONDS_ALONE);
       }
       if (this.trumpSuit !== Suits.HEARTS) {
         actions.add(ACTION_ORDER_HEARTS);
+        actions.add(ACTION_ORDER_HEARTS_ALONE);
       }
       if (this.trumpSuit !== Suits.SPADES) {
         actions.add(ACTION_ORDER_SPADES);
+        actions.add(ACTION_ORDER_SPADES_ALONE);
       }
-      // Yes, we're playing stick the dealer.
+      // The dealer can't pass if we're playing Stick the Dealer
       if (player !== this.dealer || !this.euchreGame.isPlayingStickTheDealer) {
         actions.add(ACTION_PASS);
       }
@@ -569,37 +484,150 @@ export class EuchreHand {
     });
     return actions;
   }
-}
 
-export class Trick {
-  playerFirstToAct;
-  trumpSuit;
-  cards;
+  get nextPlayer() {
+    if (this.isBiddingOnTrumpCandidate || this.isBiddingOnSuit) {
+      return normalizePlayer(this.currentPlayer + 1);
+    }
+    if (this.isDealerDiscarding) {
+      return this.dealer;
+    }
 
-  winningCard;
-  winningPlayer;
+    // Is playing a trick.
+    let nextPlayer;
+    if (this.cards.length === 0) {
+      nextPlayer =
+        this.tricks.length === 0
+          ? normalizePlayer(this.dealer + 1)
+          : this.tricks[this.tricks.length - 1].winningPlayer;
+    } else {
+      nextPlayer = normalizePlayer(this.currentPlayer + 1);
+    }
 
-  constructor(playerFirstToAct, trumpSuit, cards) {
-    this.playerFirstToAct = playerFirstToAct;
-    this.trumpSuit = trumpSuit;
-    this.cards = cards;
+    if (
+      this.isPlayerOrderingTrumpGoingAlone &&
+      nextPlayer === this.playerOrderingTrumpPartner
+    ) {
+      // The player going alone's partner isn't playing.
+      return normalizePlayer(nextPlayer + 1);
+    }
+    return nextPlayer;
+  }
 
-    let sortedCards = [...cards];
-    sortedCards.sort(getTrickComparator(cards[0], trumpSuit));
-    this.winningCard = sortedCards[0];
+  orderTrump(action) {
+    this.playerOrderingTrump = this.currentPlayer;
+    this.playerOrderingTrumpPartner = normalizePlayer(
+      this.playerOrderingTrump + 2
+    );
+    this.isPlayerOrderingTrumpGoingAlone = isGoingAloneAction(action);
+    this.trumpSuit = getSuitFromAction(action);
 
-    // Which player won the trick?
-    let winningIndex;
-    for (let i = 0; i < cards.length; i++) {
-      if (this.winningCard.equals(cards[i])) {
-        winningIndex = i;
-        break;
+    // The dealer should discard if trump is ordered up unless the dealer's partner ordered alone.
+    this.isDealerDiscarding =
+      this.isBiddingOnTrumpCandidate &&
+      !(
+        this.isPlayerOrderingTrumpGoingAlone &&
+        this.dealer === this.playerOrderingTrumpPartner
+      );
+
+    this.isBiddingOnTrumpCandidate = false;
+    this.isBiddingOnSuit = false;
+  }
+
+  startRound() {
+    this.currentTrick = new Trick(this.trumpSuit);
+  }
+
+  endRound() {
+    // Analyze the trick.
+    this.currentTrick.analyze();
+
+    if (this.currentTrick.winningPlayer % 2 === 0) {
+      this.team02Tricks++;
+    } else {
+      this.team13Tricks++;
+    }
+
+    this.tricks.push(this.currentTrick);
+
+    // Start the next round.
+    this.startRound();
+  }
+
+  get numberOfPlayersPlaying() {
+    return this.isPlayerOrderingTrumpGoingAlone ? 3 : 4;
+  }
+
+  /**
+   *
+   * @param {*} action
+   */
+  step(action) {
+    assertIsValidAction(action, this.getValidActions(this.currentPlayer));
+
+    if (this.isBidding && action !== ACTION_PASS) {
+      this.orderTrump(action);
+    } else {
+      const card = getCardFromAction(action);
+
+      if (this.isDealerDiscarding) {
+        if (card !== this.trumpCandidate) {
+          // Remove card from dealer's hand.
+          this.removeCardFromHand(card, this.dealer);
+
+          // Add trumpCandidate to dealer's hand.
+          hands[dealer].push(this.trumpCandidate);
+        }
+
+        this.isDealerDiscarding = false;
+      } else {
+        // ------- Must be playing -------
+        // Add card to publiclyKnownCards for card counting.
+        this.publiclyKnownCards.push(card);
+
+        // Remove card from player's hand.
+        this.removeCardFromHand(card, this.currentPlayer);
+
+        // Add cards cards for trick.
+        this.cards.push(card);
+
+        if (this.cards.length === this.numberOfPlayersPlaying) {
+          this.endRound();
+        }
       }
     }
-    this.winningPlayer = normalizePlayer(playerFirstToAct + winningIndex);
+
+    this.currentPlayer = this.nextPlayer;
   }
 }
 
+export class Trick {
+  trumpSuit;
+  cards;
+  playerByCardHashCode;
+  winningCard;
+  winningPlayer;
+
+  constructor(trumpSuit) {
+    this.trumpSuit = trumpSuit;
+
+    this.cards = [];
+    this.playerByCardHashCode = {};
+  }
+
+  playCard(player, card) {
+    this.cards.push(card);
+    this.playerByCardHashCode[`${card.hashCode()}`] = player;
+  }
+
+  analyze() {
+    this.winningCard = Deck.getWinningCard(this.cards, this.trumpSuit);
+    this.winningPlayer =
+      this.playerByCardHashCode[`${this.winningCard.hashCode()}`];
+  }
+}
+
+/*
 export class SnakeGame {
   /**
    * Constructor of SnakeGame.
@@ -610,7 +638,7 @@ export class SnakeGame {
    *   - numFruits {number} number of fruits present on the screen
    *     at any given step.
    *   - initLen {number} initial length of the snake.
-   */
+   *
   constructor(args) {
     if (args == null) {
       args = {};
@@ -646,7 +674,7 @@ export class SnakeGame {
    *
    * @return {object} Initial state of the game.
    *   See the documentation of `getState()` for details.
-   */
+   *
   reset() {
     this.initializeSnake_();
     this.fruitSquares_ = null;
@@ -672,7 +700,7 @@ export class SnakeGame {
    *   - `done` {boolean} whether the game has ended after this step.
    *     A game ends when the head of the snake goes off the board or goes
    *     over its own body.
-   */
+   *
   step(action) {
     const [headY, headX] = this.snakeSquares_[0];
 
@@ -774,7 +802,7 @@ export class SnakeGame {
    * Get the current direction of the snake.
    *
    * @returns {'l' | 'u' | 'r' | 'd'} Current direction of the snake.
-   */
+   *
   get snakeDirection() {
     return this.snakeDirection_;
   }
@@ -787,7 +815,7 @@ export class SnakeGame {
      * Each element is a length-2 array representing the [y, x] coordinates of
      * the square. The array is ordered such that the first element is the
      * head of the snake and the last one is the tail.
-     */
+     *
     this.snakeSquares_ = [];
 
     // Currently, the snake will start from a completely-straight and
@@ -803,7 +831,7 @@ export class SnakeGame {
      *
      * Currently, the snake will start from a completely-straight and
      * horizontally-posed state. The initial direction is always right.
-     */
+     *
     this.snakeDirection_ = "r";
   }
 
@@ -815,7 +843,7 @@ export class SnakeGame {
    * construction of this object.
    *
    * The fruits will be created at unoccupied squares of the board.
-   */
+   *
   makeFruits_() {
     if (this.fruitSquares_ == null) {
       this.fruitSquares_ = [];
@@ -871,7 +899,7 @@ export class SnakeGame {
    *        element corresponds to the tail.
    *   - f: {Array<[number, number]>} representing the squares occupied by
    *        the fruit(s).
-   */
+   *
   getState() {
     return {
       s: this.snakeSquares_.slice(),
@@ -879,6 +907,7 @@ export class SnakeGame {
     };
   }
 }
+*/
 
 /**
  * Get the current state of the game as an image tensor.
