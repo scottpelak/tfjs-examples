@@ -334,6 +334,19 @@ const getTrickComparator = (cardLed, trumpSuit) => {
   };
 };
 
+/**
+ *
+ * @param {*} cardLed
+ * @param {*} trumpSuit
+ * @returns Array filter for what cards in a hand must be played to follow suit
+ */
+const getFilterToFollowSuit = (cardLed, trumpSuit) => {
+  if (cardLed.isTrump(trumpSuit)) {
+    return (card) => card.isTrump(trumpSuit);
+  }
+  return (card) => cardLed.suit === card.suit;
+};
+
 export const newDeck = () => {
   return shuffleArray([
     new Card(Suits.CLUBS, Ranks.ACE),
@@ -496,34 +509,65 @@ export class EuchreHand {
         ACTION_PASS,
       ]);
     }
+
+    let actions = new Set();
+
     if (this.isDealerDiscarding) {
-      let actions = new Set([getDiscardAction(this.trumpCandidate)]);
+      actions.add(getDiscardAction(this.trumpCandidate));
       this.hands[dealer].forEach((card) => {
         actions.add(getDiscardAction(card));
       });
       return actions;
     }
+
     if (this.isBiddingOnSuit) {
-      let validActions = new Set();
       if (this.trumpSuit !== Suits.CLUBS) {
-        validActions.add(ACTION_ORDER_CLUBS);
+        actions.add(ACTION_ORDER_CLUBS);
       }
       if (this.trumpSuit !== Suits.DIAMONDS) {
-        validActions.add(ACTION_ORDER_DIAMONDS);
+        actions.add(ACTION_ORDER_DIAMONDS);
       }
       if (this.trumpSuit !== Suits.HEARTS) {
-        validActions.add(ACTION_ORDER_HEARTS);
+        actions.add(ACTION_ORDER_HEARTS);
       }
       if (this.trumpSuit !== Suits.SPADES) {
-        validActions.add(ACTION_ORDER_SPADES);
+        actions.add(ACTION_ORDER_SPADES);
       }
       // Yes, we're playing stick the dealer.
       if (player !== this.dealer || !this.euchreGame.isPlayingStickTheDealer) {
-        validActions.add(ACTION_PASS);
+        actions.add(ACTION_PASS);
       }
-      return validActions;
+      return actions;
     }
+
     // Is playing hand
+
+    // Is first to act
+    if (this.cards.length === 0) {
+      // Can choose any card
+      hands[player].forEach((card) => {
+        actions.add(getPlayingAction(card));
+      });
+      return actions;
+    }
+
+    // Player must follow suit
+    const cardLed = this.cards[0];
+    const cardsToFollowSuit = hands[player].filter(
+      getFilterToFollowSuit(cardLed, this.trumpSuit)
+    );
+    if (cardsToFollowSuit.length) {
+      cardsToFollowSuit.forEach((card) => {
+        actions.add(getPlayingAction(card));
+      });
+      return actions;
+    }
+
+    // Player can play anything
+    hands[player].forEach((card) => {
+      actions.add(getPlayingAction(card));
+    });
+    return actions;
   }
 }
 
