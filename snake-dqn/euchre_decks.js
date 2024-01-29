@@ -12,6 +12,19 @@ export const Suits = Object.freeze({
   SPADES: 3,
 });
 
+export function getSuitName(suit) {
+  if (suit === Suits.CLUBS) {
+    return "♧";
+  }
+  if (suit === Suits.DIAMONDS) {
+    return "♦";
+  }
+  if (suit === Suits.HEARTS) {
+    return "♥";
+  }
+  return "♤";
+}
+
 export const getOppositeSuit = (suit) => {
   if (suit === Suits.CLUBS) {
     return Suits.SPADES;
@@ -40,6 +53,24 @@ export const Ranks = Object.freeze({
   NINE: 5,
 });
 
+export function getRankName(rank) {
+  if (rank === Ranks.ACE) {
+    return " A";
+  }
+  if (rank === Ranks.KING) {
+    return " K";
+  }
+  if (rank === Ranks.QUEEN) {
+    return " Q";
+  }
+  if (rank === Ranks.JACK) {
+    return " J";
+  }
+  if (rank === Ranks.TEN) {
+    return "10";
+  }
+  return " 9";
+}
 export class Card {
   suit;
   rank;
@@ -49,12 +80,16 @@ export class Card {
     this.rank = rank;
   }
 
-  hashCode() {
-    return 10 * this.suit + 1 + this.rank;
+  get hashCode() {
+    return 10 * this.suit + this.rank;
+  }
+
+  get name() {
+    return getRankName(this.rank) + getSuitName(this.suit);
   }
 
   equals(card) {
-    return this.hashCode() === card.hashCode();
+    return this.hashCode === card.hashCode;
   }
 
   isRightBower(trumpSuit) {
@@ -72,6 +107,10 @@ export class Card {
    */
   isTrump(trumpSuit) {
     return this.suit === trumpSuit || this.isLeftBower(trumpSuit);
+  }
+
+  toString() {
+    return this.name;
   }
 }
 
@@ -137,7 +176,7 @@ export const getFilterToFollowSuit = (cardLed, trumpSuit) => {
   if (cardLed.isTrump(trumpSuit)) {
     return (card) => card.isTrump(trumpSuit);
   }
-  return (card) => cardLed.suit === card.suit;
+  return (card) => cardLed.suit === card.suit && !card.isTrump(trumpSuit);
 };
 
 export const shuffleArray = (array) => {
@@ -174,8 +213,7 @@ export const CARD_J_S = new Card(Suits.SPADES, Ranks.JACK);
 export const CARD_T_S = new Card(Suits.SPADES, Ranks.TEN);
 export const CARD_N_S = new Card(Suits.SPADES, Ranks.NINE);
 
-const _cardByHashCode = new Map();
-[
+export const ALL_CARDS = [
   CARD_A_C,
   CARD_K_C,
   CARD_Q_C,
@@ -200,7 +238,12 @@ const _cardByHashCode = new Map();
   CARD_J_S,
   CARD_T_S,
   CARD_N_S,
-].forEach((card) => _cardByHashCode.set(card.hashCode(), card));
+];
+
+const _cardByHashCode = ALL_CARDS.reduce((map, card) => {
+  map.set(card.hashCode, card);
+  return map;
+}, new Map());
 
 export const getCard = (hashCode) => {
   if (_cardByHashCode.has(hashCode)) {

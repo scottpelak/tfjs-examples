@@ -17,11 +17,7 @@
 
 import * as tf from "@tensorflow/tfjs";
 
-import {
-  assertPositiveInteger,
-  assertIsValidAction,
-  getRandomInteger,
-} from "./utils";
+import { assertIsValidAction, getRandomInteger } from "./utils";
 import * as Deck from "./euchre_decks";
 import { _ } from "core-js";
 import { assert } from "console";
@@ -59,160 +55,27 @@ export const BIDDING_ON_SUIT_ACTIONS = Deck.Suits.map((suit) =>
 export const BIDDING_ON_SUIT_ALONE_ACTIONS = Deck.Suits.map((suit) =>
   getOrderSuitAloneAction(suit)
 );
-/*
-export const ACTION_ORDER_CLUBS =
-  BIDDING_ON_SUIT_ACTION_SHIFT + Deck.Suits.CLUBS;
-export const ACTION_ORDER_DIAMONDS =
-  BIDDING_ON_SUIT_ACTION_SHIFT + Deck.Suits.DIAMONDS;
-export const ACTION_ORDER_HEARTS =
-  BIDDING_ON_SUIT_ACTION_SHIFT + Deck.Suits.HEARTS;
-export const ACTION_ORDER_SPADES =
-  BIDDING_ON_SUIT_ACTION_SHIFT + Deck.Suits.SPADES;
-
-export const ACTION_ORDER_CLUBS_ALONE = ACTION_ORDER_CLUBS + GOING_ALONE_SHIFT;
-export const ACTION_ORDER_DIAMONDS_ALONE =
-  ACTION_ORDER_DIAMONDS + GOING_ALONE_SHIFT;
-export const ACTION_ORDER_HEARTS_ALONE =
-  ACTION_ORDER_HEARTS + GOING_ALONE_SHIFT;
-export const ACTION_ORDER_SPADES_ALONE =
-  ACTION_ORDER_SPADES + GOING_ALONE_SHIFT;
-*/
 
 // Discard actions
 const DISCARD_ACTION_SHIFT = 200;
 
-const getDiscardAction = (card) => DISCARD_ACTION_SHIFT + card.hashCode();
+const getDiscardAction = (card) => DISCARD_ACTION_SHIFT + card.hashCode;
 
 export const DISCARD_ACTIONS = Deck.STANDARD_EUCHRE_DECK.map((card) =>
   getDiscardAction(card)
 );
-/*
-export const ACTION_DISCARD_A_C = getDiscardAction(Deck.CARD_A_C);
-export const ACTION_DISCARD_K_C = getDiscardAction(Deck.CARD_K_C);
-export const ACTION_DISCARD_Q_C = getDiscardAction(Deck.CARD_Q_C);
-export const ACTION_DISCARD_J_C = getDiscardAction(Deck.CARD_J_C);
-export const ACTION_DISCARD_T_C = getDiscardAction(Deck.CARD_T_C);
-export const ACTION_DISCARD_N_C = getDiscardAction(Deck.CARD_N_C);
-export const ACTION_DISCARD_A_D = getDiscardAction(Deck.CARD_A_D);
-export const ACTION_DISCARD_K_D = getDiscardAction(Deck.CARD_K_D);
-export const ACTION_DISCARD_Q_D = getDiscardAction(Deck.CARD_Q_D);
-export const ACTION_DISCARD_J_D = getDiscardAction(Deck.CARD_J_D);
-export const ACTION_DISCARD_T_D = getDiscardAction(Deck.CARD_T_D);
-export const ACTION_DISCARD_N_D = getDiscardAction(Deck.CARD_N_D);
-export const ACTION_DISCARD_A_H = getDiscardAction(Deck.CARD_A_H);
-export const ACTION_DISCARD_K_H = getDiscardAction(Deck.CARD_K_H);
-export const ACTION_DISCARD_Q_H = getDiscardAction(Deck.CARD_Q_H);
-export const ACTION_DISCARD_J_H = getDiscardAction(Deck.CARD_J_H);
-export const ACTION_DISCARD_T_H = getDiscardAction(Deck.CARD_T_H);
-export const ACTION_DISCARD_N_H = getDiscardAction(Deck.CARD_N_H);
-export const ACTION_DISCARD_A_S = getDiscardAction(Deck.CARD_A_S);
-export const ACTION_DISCARD_K_S = getDiscardAction(Deck.CARD_K_S);
-export const ACTION_DISCARD_Q_S = getDiscardAction(Deck.CARD_Q_S);
-export const ACTION_DISCARD_J_S = getDiscardAction(Deck.CARD_J_S);
-export const ACTION_DISCARD_T_S = getDiscardAction(Deck.CARD_T_S);
-export const ACTION_DISCARD_N_S = getDiscardAction(Deck.CARD_N_S);
-*/
 
 // Playing actions
 const PLAYING_ACTION_SHIFT = 300;
 
-const getPlayingAction = (card) => PLAYING_ACTION_SHIFT + card.hashCode();
+const getPlayingAction = (card) => PLAYING_ACTION_SHIFT + card.hashCode;
 
 export const PLAYING_ACTIONS = Deck.STANDARD_EUCHRE_DECK.map((card) =>
   getPlayingAction(card)
 );
-/*
-export const ACTION_PLAY_A_C = getPlayingAction(Deck.CARD_A_C);
-export const ACTION_PLAY_K_C = getPlayingAction(Deck.CARD_K_C);
-export const ACTION_PLAY_Q_C = getPlayingAction(Deck.CARD_Q_C);
-export const ACTION_PLAY_J_C = getPlayingAction(Deck.CARD_J_C);
-export const ACTION_PLAY_T_C = getPlayingAction(Deck.CARD_T_C);
-export const ACTION_PLAY_N_C = getPlayingAction(Deck.CARD_N_C);
-export const ACTION_PLAY_A_D = getPlayingAction(Deck.CARD_A_D);
-export const ACTION_PLAY_K_D = getPlayingAction(Deck.CARD_K_D);
-export const ACTION_PLAY_Q_D = getPlayingAction(Deck.CARD_Q_D);
-export const ACTION_PLAY_J_D = getPlayingAction(Deck.CARD_J_D);
-export const ACTION_PLAY_T_D = getPlayingAction(Deck.CARD_T_D);
-export const ACTION_PLAY_N_D = getPlayingAction(Deck.CARD_N_D);
-export const ACTION_PLAY_A_H = getPlayingAction(Deck.CARD_A_H);
-export const ACTION_PLAY_K_H = getPlayingAction(Deck.CARD_K_H);
-export const ACTION_PLAY_Q_H = getPlayingAction(Deck.CARD_Q_H);
-export const ACTION_PLAY_J_H = getPlayingAction(Deck.CARD_J_H);
-export const ACTION_PLAY_T_H = getPlayingAction(Deck.CARD_T_H);
-export const ACTION_PLAY_N_H = getPlayingAction(Deck.CARD_N_H);
-export const ACTION_PLAY_A_S = getPlayingAction(Deck.CARD_A_S);
-export const ACTION_PLAY_K_S = getPlayingAction(Deck.CARD_K_S);
-export const ACTION_PLAY_Q_S = getPlayingAction(Deck.CARD_Q_S);
-export const ACTION_PLAY_J_S = getPlayingAction(Deck.CARD_J_S);
-export const ACTION_PLAY_T_S = getPlayingAction(Deck.CARD_T_S);
-export const ACTION_PLAY_N_S = getPlayingAction(Deck.CARD_N_S);
-*/
 
 export const getCardFromAction = (action) => Deck.getCard(action % 100);
 
-/*
-export const ALL_ACTIONS = [
-  // Bidding
-  ACTION_ORDER_TRUMP,
-  ACTION_ORDER_TRUMP_ALONE,
-  ACTION_PASS,
-  // Biding on suit
-  ACTION_ORDER_CLUBS,
-  ACTION_ORDER_DIAMONDS,
-  ACTION_ORDER_HEARTS,
-  ACTION_ORDER_SPADES,
-  // Discarding
-  ACTION_DISCARD_A_C,
-  ACTION_DISCARD_K_C,
-  ACTION_DISCARD_Q_C,
-  ACTION_DISCARD_J_C,
-  ACTION_DISCARD_T_C,
-  ACTION_DISCARD_N_C,
-  ACTION_DISCARD_A_D,
-  ACTION_DISCARD_K_D,
-  ACTION_DISCARD_Q_D,
-  ACTION_DISCARD_J_D,
-  ACTION_DISCARD_T_D,
-  ACTION_DISCARD_N_D,
-  ACTION_DISCARD_A_H,
-  ACTION_DISCARD_K_H,
-  ACTION_DISCARD_Q_H,
-  ACTION_DISCARD_J_H,
-  ACTION_DISCARD_T_H,
-  ACTION_DISCARD_N_H,
-  ACTION_DISCARD_A_S,
-  ACTION_DISCARD_K_S,
-  ACTION_DISCARD_Q_S,
-  ACTION_DISCARD_J_S,
-  ACTION_DISCARD_T_S,
-  ACTION_DISCARD_N_S,
-  // Playing
-  ACTION_PLAY_A_C,
-  ACTION_PLAY_K_C,
-  ACTION_PLAY_Q_C,
-  ACTION_PLAY_J_C,
-  ACTION_PLAY_T_C,
-  ACTION_PLAY_N_C,
-  ACTION_PLAY_A_D,
-  ACTION_PLAY_K_D,
-  ACTION_PLAY_Q_D,
-  ACTION_PLAY_J_D,
-  ACTION_PLAY_T_D,
-  ACTION_PLAY_N_D,
-  ACTION_PLAY_A_H,
-  ACTION_PLAY_K_H,
-  ACTION_PLAY_Q_H,
-  ACTION_PLAY_J_H,
-  ACTION_PLAY_T_H,
-  ACTION_PLAY_N_H,
-  ACTION_PLAY_A_S,
-  ACTION_PLAY_K_S,
-  ACTION_PLAY_Q_S,
-  ACTION_PLAY_J_S,
-  ACTION_PLAY_T_S,
-  ACTION_PLAY_N_S,
-];
-*/
 export const ALL_ACTIONS = [
   BIDDING_ACTIONS,
   BIDDING_ON_SUIT_ACTIONS,
@@ -319,15 +182,6 @@ export class EuchreGame {
     }
   }
 }
-
-export const Rounds = Object.freeze({
-  BIDDING: 9,
-  TRICK_1: 0,
-  TRICK_2: 1,
-  TRICK_3: 2,
-  TRICK_4: 3,
-  TRICK_5: 4,
-});
 
 export class EuchreHand {
   euchreGame;
@@ -684,13 +538,13 @@ export class Trick {
 
   playCard(card, player) {
     this.cards.push(card);
-    this.playerByCardHashCode[`${card.hashCode()}`] = player;
+    this.playerByCardHashCode[`${card.hashCode}`] = player;
   }
 
   analyze() {
     this.winningCard = Deck.getWinningCard(this.cards, this.trumpSuit);
     this.winningPlayer =
-      this.playerByCardHashCode[`${this.winningCard.hashCode()}`];
+      this.playerByCardHashCode[`${this.winningCard.hashCode}`];
   }
 }
 
